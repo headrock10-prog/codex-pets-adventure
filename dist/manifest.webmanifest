@@ -1,0 +1,10 @@
+{
+  "name": "Codex Pets Adventure",
+  "short_name": "Pets Adventure",
+  "description": "6人のCodex Petsで進む横スクロールアクション",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#081520",
+  "theme_color": "#081520"
+}
