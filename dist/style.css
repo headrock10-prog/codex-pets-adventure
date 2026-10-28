@@ -22,9 +22,9 @@ button{font:inherit;touch-action:manipulation}
   body{--gutter:max(0px,calc((100vw - 177.78dvh)/2))}
   .party{top:58px;right:calc(var(--gutter)/2 - 22px);flex-direction:column;gap:5px}
   .party button{width:42px;height:42px}
-  .controls{left:auto;right:calc(var(--gutter)/2 - 48px);bottom:12px;width:96px;display:flex;flex-direction:column;align-items:stretch;gap:7px}
+  .controls{left:50%;right:auto;bottom:10px;width:auto;display:flex;flex-direction:row;align-items:center;gap:8px;transform:translateX(-50%)}
   .controls>div{position:fixed;left:calc(var(--gutter)/2 - 52px);bottom:16px;display:grid;grid-template-columns:repeat(2,49px);gap:6px;margin:0}
-  .controls button{width:96px;min-width:96px;min-height:48px;height:48px;border-radius:15px}
+  .controls button{width:104px;min-width:104px;min-height:52px;height:52px;border-radius:15px}
   .controls>div button{width:49px;min-width:49px;height:58px;min-height:58px;padding:0}
-  .controls #power,.controls #attack,.controls #jump{min-width:96px;width:96px}
+  .controls #power,.controls #attack,.controls #jump{min-width:104px;width:104px}
 }
