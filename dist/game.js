@@ -1,17 +1,864 @@
-(()=>{const C=document.getElementById('game'),x=C.getContext('2d'),W=960,H=540,G=430,CW=192,CH=208,toast=document.getElementById('toast'),finish=document.getElementById('finish'),keyEl=document.getElementById('key'),hpEl=document.getElementById('hp'),names=['Mura Bear','Codex','Dewey','Hoots','Seedy','Ai'],src=['mura-a.png','codex.webp','dewey.webp','hoots.webp','seedy.webp','ai.png'],img=src.map(s=>{let i=new Image;i.src='assets/'+s;return i}),factoryBg=new Image,forestBg=new Image,skyBg=new Image,guardianImg=new Image,enemyImg=[new Image,new Image],forestEnemyImg=[new Image,new Image];factoryBg.src='assets/factory-bg.webp';forestBg.src='assets/forest-bg-v2.png';skyBg.src='assets/sky-ruins-bg.png';guardianImg.src='assets/sky-guardian.png';enemyImg[0].src='assets/factory-walker.webp';enemyImg[1].src='assets/factory-drone.webp';forestEnemyImg[0].src='assets/forest-golem.png';forestEnemyImg[1].src='assets/forest-wasp.png';let stage=1,p,q,cam,k,sel,stars,key,hp,gate,bridge,vines,keyTaken,won,parts,coins,flight,mobs,shots,enemyShots,attackCd,invuln,rootFx,aiPowerCd;
-const stageTitle=document.getElementById('stage-title'),clearText=document.getElementById('clear-text'),nextBtn=document.getElementById('next'),mobCountEl=document.getElementById('mob-count');function say(s){toast.textContent=s;toast.style.opacity=1;clearTimeout(say.t);say.t=setTimeout(()=>toast.style.opacity=.35,2200)}function reset(toStage=stage){stage=toStage;p={x:120,y:G-78,vx:0,vy:0,w:58,h:72,on:1,dir:1};q=[1,2,3,4,5].map((id,i)=>({id,x:70-i*40,y:G-66,dir:1}));cam=0;k={};sel=0;stars=0;key=gate=bridge=vines=keyTaken=won=false;flight=null;hp=5;attackCd=invuln=aiPowerCd=0;rootFx=0;shots=[];enemyShots=[];mobs=(stage===1?[{type:'golem',x:520,y:G-54,home:520,dir:1,hp:3},{type:'wasp',x:920,y:G-165,home:920,dir:-1,hp:2},{type:'golem',x:1530,y:G-54,home:1530,dir:1,hp:3},{type:'wasp',x:2050,y:G-165,home:2050,dir:-1,hp:2},{type:'golem',x:2660,y:G-54,home:2660,dir:-1,hp:4}]:stage===2?[{type:'walker',x:430,y:G-48,home:430,dir:1,hp:4},{type:'drone',x:720,y:G-165,home:720,dir:-1,hp:3},{type:'walker',x:1040,y:G-48,home:1040,dir:-1,hp:4},{type:'drone',x:1370,y:G-180,home:1370,dir:1,hp:3},{type:'walker',x:1720,y:G-48,home:1720,dir:1,hp:5},{type:'drone',x:2050,y:G-160,home:2050,dir:-1,hp:3},{type:'walker',x:2390,y:G-48,home:2390,dir:1,hp:5},{type:'drone',x:2700,y:G-175,home:2700,dir:-1,hp:4}]:[{type:'golem',x:430,y:G-54,home:430,dir:1,hp:5},{type:'wasp',x:820,y:G-170,home:820,dir:-1,hp:4},{type:'golem',x:1250,y:G-54,home:1250,dir:-1,hp:6},{type:'wasp',x:1680,y:G-185,home:1680,dir:1,hp:5},{type:'golem',x:2100,y:G-54,home:2100,dir:1,hp:7},{type:'wasp',x:2450,y:G-170,home:2450,dir:-1,hp:5},{type:'boss',x:2830,y:G-105,home:2830,dir:-1,hp:24}]);mobs.forEach(a=>{a.max=a.hp;a.minX=Math.max(45,a.home-120);a.maxX=Math.min(3055,a.home+120);a.cool=50+Math.random()*70});mobCountEl.textContent=mobs.length;parts=[];coins=[];stageTitle.textContent=stage===1?'STAGE 1：はじまりの森':stage===2?'STAGE 2：ネオン機械工場':'STAGE 3：天空遺跡の守護者';nextBtn.style.display=stage<3?'inline-block':'none';nextBtn.textContent=stage===1?'ステージ2へ':'ステージ3へ';document.getElementById('key-hud').style.display=stage===1?'inline':'none';keyEl.textContent=0;hpEl.textContent=hp;finish.classList.remove('show');select(0);say(stage===1?'Mura Bearと仲間たちの冒険が始まる！':stage===2?'ネオン機械工場へ突入！全モブを倒して出口へ！':'天空遺跡へ！守護者を倒して最上階を目指そう！')}
-function select(i){if(flight)return;sel=i;let order=[0,1,2,3,4,5].filter(id=>id!==i);q.forEach((a,j)=>a.id=order[j]);document.querySelectorAll('.party button').forEach((b,j)=>b.classList.toggle('active',i===j));if(parts)burst(p.x,p.y+20,'✨');say(names[i]+'が先頭に交代！')}function burst(px,py,ch='✨'){for(let i=0;i<10;i++)parts.push({x:px,y:py,vx:(Math.random()-.5)*7,vy:-Math.random()*7-2,t:55,ch})}function power(){if(sel===1&&Math.abs(p.x-720)<150&&!gate){gate=true;burst(720,G-100,'⚡');say('Codexが端末を解除！')}else if(sel===2&&p.x>980&&p.x<1480&&!bridge){bridge=true;burst(1240,G-20,'💧');say('Deweyが水の橋を作った！')}else if(sel===4&&p.x>1630&&p.x<1950&&!vines){vines=true;burst(1820,G-70,'🌿');say('Seedyがツタの足場を育てた！')}else if(sel===3&&p.x>2050&&p.x<2500&&!keyTaken&&!flight){flight={t:0,sx:p.x,sy:p.y};p.vx=p.vy=0;say('Hoots、空の鍵へテイクオフ！')}else if(sel===5&&aiPowerCd<=0){aiPowerCd=600;if(hp<5){hp++;hpEl.textContent=hp;burst(p.x,p.y,'💖');say('Aiの応援でHPが1回復！')}else{invuln=Math.max(invuln,180);burst(p.x,p.y,'🛡️');say('Aiの応援バリア！')} }else say('ここでは別の仲間の力が必要みたい…')}function jump(){if(!flight&&p.on){p.vy=-15;p.on=0}}function hitMob(a,d,kb=0){if(a.dead)return;a.hp-=d;a.x=Math.max(a.minX,Math.min(a.maxX,a.x+kb));if(a.x===a.minX)a.dir=1;if(a.x===a.maxX)a.dir=-1;burst(a.x,a.y,'💥');if(a.hp<=0){a.dead=1;mobCountEl.textContent=mobs.filter(m=>!m.dead).length;burst(a.x,a.y,'✨');say((a.type==='drone'||a.type==='wasp')?'飛行モブを撃破！':'地上モブを撃破！')}}function attack(){if(flight||attackCd>0)return;attackCd=24;if(sel===0){let hit=0;mobs.forEach(a=>{if(!a.dead&&Math.hypot(p.x-a.x,p.y+35-a.y)<115){hitMob(a,2,p.dir*35);hit=1}});burst(p.x+p.dir*55,p.y+35,'👊');if(!hit)say('Muraパンチ！')}else if(sel===4){rootFx=30;let hit=0;mobs.forEach(a=>{if(!a.dead&&Math.abs(p.x-a.x)<180){hitMob(a,1,0);a.root=90;hit=1}});say(hit?'Seedyのツタが敵を捕まえた！':'Seedyのツタ攻撃！')}else{let glyph=sel===1?'▸':sel===2?'●':sel===5?'♥':'➤',speed=sel===2?7:sel===5?8:10,damage=sel===1?2:sel===5?2:1,sx=p.x+p.dir*45,sy=p.y+28,target=mobs.filter(a=>!a.dead&&(a.x-p.x)*p.dir>0&&Math.abs(a.x-p.x)<700).sort((a,b)=>Math.abs(a.x-p.x)-Math.abs(b.x-p.x))[0],vx=p.dir*speed,vy=0;if(target){let frames=Math.max(10,Math.abs(target.x-sx)/speed);vy=Math.max(-6,Math.min(6,(target.y-sy)/frames))}shots.push({x:sx,y:sy,vx,vy,glyph,kind:sel,damage});say(sel===1?'Codexショット！':sel===2?'Deweyの水弾！':sel===5?'Aiの応援ハート！':'Hootsの羽根攻撃！')}}
-function update(){if(won)return;if(attackCd>0)attackCd--;if(aiPowerCd>0)aiPowerCd--;if(invuln>0)invuln--;if(rootFx>0)rootFx--;if(flight){flight.t++;let u=Math.min(1,flight.t/120),arc=Math.sin(Math.PI*u);p.x=flight.sx+(2290-flight.sx)*arc;p.y=flight.sy-225*arc;p.dir=1;q.forEach((a,i)=>{let tx=flight.sx-(i+1)*48,ty=flight.sy+10;a.x+=(tx-a.x)*.09;a.y+=(ty-a.y)*.12});if(flight.t===60){keyTaken=key=true;keyEl.textContent=1;burst(2290,G-260,'🔑');say('Hootsが空の鍵をキャッチ！')}if(flight.t>=120){p.x=flight.sx;p.y=flight.sy;p.on=1;flight=null;say('Hootsが鍵を持って帰還！')}cam+=(Math.max(0,Math.min(2240,p.x-W*.38))-cam)*.08;parts.forEach(a=>{a.x+=a.vx;a.y+=a.vy;a.vy+=.15;a.t--});parts=parts.filter(a=>a.t>0);return}let m=(k.ArrowRight||k.d?1:0)-(k.ArrowLeft||k.a?1:0);p.vx+=(m*1.15-p.vx)*.22;if(m)p.dir=m;p.vy+=.78;let nx=p.x+p.vx,ny=p.y+p.vy;if(stage===1&&!gate&&nx>685&&nx<765&&p.y>G-155){nx=p.x<725?684:766;p.vx=0;}if(stage===1&&nx>1105&&nx<1385&&!bridge&&p.y>G-100)ny=H+100;if(ny+p.h>=G&&!(stage===1&&nx>1100&&nx<1390&&!bridge)){ny=G-p.h;p.vy=0;p.on=1}if(stage===1&&vines&&nx>1770&&nx<1900&&ny+p.h>G-92&&p.y+p.h<=G-80){ny=G-92-p.h;p.vy=0;p.on=1}if(stage===1&&nx>2160&&nx<2400&&ny+p.h>G-190&&p.y+p.h<=G-160){ny=G-190-p.h;p.vy=0;p.on=1}p.x=Math.max(30,Math.min(3150,nx));p.y=ny;if(p.y>H){say('水に落ちた！Deweyの力を借りよう');p.x=980;p.y=G-p.h;p.vy=0}q.forEach((a,i)=>{let tx=p.x-(i+1)*48*p.dir,ty=p.y+10,dx=tx-a.x;if(Math.abs(dx)>.5)a.dir=dx<0?-1:1;a.x+=dx*.09;a.y+=(ty-a.y)*.12});shots.forEach(s=>{s.x+=s.vx;s.y+=s.vy||0;mobs.forEach(a=>{if(!a.dead&&!s.dead&&Math.hypot(s.x-a.x,s.y-a.y)<55){hitMob(a,s.damage,s.vx*2);if(s.kind===2)a.x=Math.max(a.minX,Math.min(a.maxX,a.x+s.vx*3));s.dead=1}})});shots=shots.filter(s=>!s.dead&&Math.abs(s.x-p.x)<900);enemyShots.forEach(s=>{s.x+=s.vx;s.y+=s.vy;if(!s.dead&&Math.hypot(s.x-p.x,s.y-(p.y+35))<38){s.dead=1;if(invuln===0){hp--;hpEl.textContent=hp;invuln=90;p.vx=s.vx<0?-7:7;p.vy=-6;burst(p.x,p.y,'💔');say('敵の弾にヒット！');if(hp<=0){hp=5;hpEl.textContent=hp;p.x=Math.max(120,p.x-350);p.y=G-p.h;say('仲間たちが助けてくれた！')}}}});enemyShots=enemyShots.filter(s=>!s.dead&&Math.abs(s.x-p.x)<900&&s.y>-40&&s.y<H+40);mobs.forEach(a=>{if(a.dead)return;let pd=p.x-a.x,alert=stage>=2&&Math.abs(pd)<420;if(a.root>0)a.root--;else{if(alert&&(a.type==='walker'||a.type==='golem'||a.type==='boss')){a.dir=pd<0?-1:1;a.x+=a.dir*(a.type==='boss'?1.25:2.35)}else a.x+=a.dir*((a.type==='drone'||a.type==='wasp')?.75:.55);if(a.x<=a.minX){a.x=a.minX;a.dir=1}else if(a.x>=a.maxX){a.x=a.maxX;a.dir=-1}}if(a.type==='drone'||a.type==='wasp')a.y=G-155+Math.sin(performance.now()/420+a.home)*32;if((stage===2&&a.type==='drone')||(stage===3&&(a.type==='wasp'||a.type==='boss'))){a.cool--;if(Math.abs(pd)<560&&a.cool<=0){let d=Math.hypot(p.x-a.x,p.y+30-a.y)||1;enemyShots.push({x:a.x,y:a.y,vx:(p.x-a.x)/d*4.4,vy:(p.y+30-a.y)/d*4.4});a.cool=a.type==='boss'?65:115;burst(a.x,a.y,'⚠️')}};if(Math.hypot(p.x-a.x,p.y+35-a.y)<52&&invuln===0){hp--;hpEl.textContent=hp;invuln=90;p.vx=-a.dir*7;p.vy=-6;burst(p.x,p.y,'💔');say('ダメージ！');if(hp<=0){hp=5;hpEl.textContent=hp;p.x=Math.max(120,p.x-350);p.y=G-p.h;say('仲間たちが助けてくれた！')}}});if(p.x>2940){if(stage>=2){if(mobs.every(a=>a.dead)){won=true;clearText.textContent=stage===2?'機械工場のモブを全滅させました！':'天空の守護者を倒し、遺跡を解放しました！';burst(p.x,p.y,'🎉');setTimeout(()=>finish.classList.add('show'),500)}else{let remaining=mobs.filter(a=>!a.dead),rescue=remaining[0];rescue.home=2820;rescue.minX=2700;rescue.maxX=2940;rescue.x=2820;rescue.y=(rescue.type==='drone'||rescue.type==='wasp')?G-145:rescue.type==='boss'?G-105:G-48;p.x=2880;say('残り'+remaining.length+'体！最後のモブを出口付近へ呼び戻した！')}}else if(key){won=true;clearText.textContent='6人の力で、はじまりの森を突破しました。';burst(p.x,p.y,'🎉');setTimeout(()=>finish.classList.add('show'),500)}else{p.x=2900;say('出口には空の鍵が必要！Hootsを呼ぼう')}}cam+=(Math.max(0,Math.min(2240,p.x-W*.38))-cam)*.08;parts.forEach(a=>{a.x+=a.vx;a.y+=a.vy;a.vy+=.15;a.t--});parts=parts.filter(a=>a.t>0)}
-function pet(im,px,py,row,fr,flip=false,s=.38){x.save();x.translate(px-cam,py);if(flip)x.scale(-1,1);x.drawImage(im,fr*CW,row*CH,CW,CH,-CW*s/2,-CH*s,CW*s,CH*s);x.restore()}function draw(){let g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#73c9ef');g.addColorStop(.55,'#bcebd4');g.addColorStop(1,'#3d8a4d');x.fillStyle=g;x.fillRect(0,0,W,H);if(stage===3){if(skyBg.complete){let bgx=-(cam*.12%W);x.drawImage(skyBg,bgx-W,0,W,H);x.drawImage(skyBg,bgx,0,W,H);x.drawImage(skyBg,bgx+W,0,W,H)}x.fillStyle='#3e315055';x.fillRect(0,0,W,H);x.fillStyle='#d9cfb7';x.fillRect(0,G,W,H-G);x.fillStyle='#fff3c9';x.fillRect(0,G,W,10);x.strokeStyle='#5adcf2';x.lineWidth=4;for(let a=-cam%180-180;a<W+180;a+=180){x.beginPath();x.moveTo(a,G+38);x.lineTo(a+70,G+38);x.lineTo(a+90,G+58);x.lineTo(a+110,G+38);x.lineTo(a+180,G+38);x.stroke()}x.fillStyle='#326c86';x.font='bold 20px sans-serif';x.fillText('天空遺跡・最上階 →',36,G-22)}else if(stage===2){if(factoryBg.complete){let bgx=-(cam*.22%W);x.drawImage(factoryBg,bgx-W,0,W,H);x.drawImage(factoryBg,bgx,0,W,H);x.drawImage(factoryBg,bgx+W,0,W,H)}x.fillStyle='#071b2aaa';x.fillRect(0,G,W,H-G);x.strokeStyle='#35d5ff88';x.lineWidth=4;for(let a=-cam%160-160;a<W+160;a+=160){x.beginPath();x.moveTo(a,G);x.lineTo(a-55,H);x.stroke()}x.strokeStyle='#ff4fd866';x.lineWidth=3;x.beginPath();x.moveTo(0,G+34);x.lineTo(W,G+34);x.stroke()}else{if(forestBg.complete){let crop=(forestBg.width-forestBg.height*W/H)/2;x.drawImage(forestBg,Math.max(0,crop),0,forestBg.width-Math.max(0,crop)*2,forestBg.height,0,0,W,H)}x.fillStyle='#112f2070';x.fillRect(0,0,W,H);x.fillStyle='#342719';x.fillRect(0,G,W,H-G);x.fillStyle='#92d95d';x.fillRect(0,G,W,14);x.fillStyle='#e5f4a4';x.fillRect(0,G,W,4);for(let a=-cam%100-100;a<W+100;a+=100){x.fillStyle='#60442d';x.beginPath();x.ellipse(a,G+52,37,14,0,0,7);x.fill()}const sign=(wx,label,color)=>{let sx=wx-cam;x.fillStyle='#33271d';x.fillRect(sx-5,G-94,10,94);x.fillStyle=color;x.fillRect(sx-76,G-138,152,48);x.strokeStyle='#fff1c9';x.lineWidth=3;x.strokeRect(sx-76,G-138,152,48);x.fillStyle='#fff';x.font='bold 18px sans-serif';x.textAlign='center';x.fillText(label,sx,G-107);x.textAlign='start'};sign(330,'ATTACKで倒せ！','#a8443c');sign(1010,'DEWEY の力','#177da7');sign(1715,'SEEDY の力','#378b43');sign(2070,'HOOTS で飛ぶ','#674691');x.fillStyle='#254b63';x.fillRect(700-cam,G-160,52,20);x.fillRect(700-cam,G-20,52,20);if(!gate){let barrier=x.createLinearGradient(700-cam,0,752-cam,0);barrier.addColorStop(0,'#ff4b7044');barrier.addColorStop(.5,'#ff8caadd');barrier.addColorStop(1,'#ff4b7044');x.fillStyle=barrier;x.fillRect(706-cam,G-140,40,120);x.strokeStyle='#ffd1dc';x.lineWidth=3;for(let gy=G-128;gy<G-28;gy+=18){x.beginPath();x.moveTo(709-cam,gy);x.lineTo(743-cam,gy+8);x.stroke()}}else{x.fillStyle='#72d9a1';x.fillRect(706-cam,G-154,40,8);x.fillRect(706-cam,G-14,40,8);x.font='16px sans-serif';x.fillText('OPEN',703-cam,G-168)}x.fillStyle='#176d9d';x.fillRect(1100-cam,G,290,110);x.fillStyle='#81e6ff';x.fillRect(1100-cam,G,290,8);x.fillStyle='#e8fbff';for(let a=1110;a<1390;a+=36){x.fillRect(a-cam,G+14,20,3)}if(bridge){x.fillStyle='#a4eafa';x.fillRect(1100-cam,G-15,290,20)}if(vines){x.fillStyle='#4caf54';for(let a=1780;a<1900;a+=35)x.fillRect(a-cam,G-92,28,92)}x.fillStyle='#74513f';x.fillRect(2160-cam,G-190,240,28);x.fillStyle='#55a84d';x.fillRect(2160-cam,G-190,240,9);if(!keyTaken){x.font='34px sans-serif';x.fillText('🔑',2270-cam,G-225)}x.fillStyle='#684d8b';x.fillRect(2960-cam,G-180,90,180);x.fillStyle=key?'#7dffc1':'#ff7990';x.fillRect(2980-cam,G-135,48,100)}mobs.forEach(a=>{if(a.dead)return;x.save();x.translate(a.x-cam,a.y);if(stage===2&&a.type==='drone'&&a.cool<25){x.strokeStyle='#ff5d76';x.lineWidth=5;x.beginPath();x.arc(0,0,36+(25-a.cool)*.5,0,7);x.stroke()}if(stage===2){let ei=enemyImg[a.type==='drone'?1:0],size=a.type==='drone'?96:102;if(ei.complete)x.drawImage(ei,-size/2,-size/2,size,size)}else if(stage===3){if(a.type==='boss'){if(guardianImg.complete)x.drawImage(guardianImg,-92,-92,184,184)}else{let flying=a.type==='wasp',ei=forestEnemyImg[flying?1:0],size=flying?108:120;if(ei.complete)x.drawImage(ei,-size/2,-size/2,size,size)}}else{let flying=a.type==='wasp',ei=forestEnemyImg[flying?1:0],size=flying?112:126;if(a.root>0){x.shadowColor='#71ff76';x.shadowBlur=22}if(ei.complete)x.drawImage(ei,-size/2,-size/2,size,size);x.shadowBlur=0}x.fillStyle='#2a1720';x.fillRect(-24,-58,48,5);x.fillStyle='#72ef8d';x.fillRect(-24,-58,48*Math.max(0,a.hp)/a.max,5);x.restore()});shots.forEach(s=>{x.fillStyle=s.kind===1?'#7ce7ff':s.kind===2?'#53bfff':'#ffe889';x.font='26px sans-serif';x.fillText(s.glyph,s.x-cam,s.y)});enemyShots.forEach(s=>{x.fillStyle='#ff486a';x.shadowColor='#ff9bad';x.shadowBlur=14;x.beginPath();x.arc(s.x-cam,s.y,9,0,7);x.fill();x.shadowBlur=0});if(rootFx>0){x.strokeStyle='#58c95c';x.lineWidth=7;x.beginPath();x.arc(p.x-cam,G-12,150,Math.PI,Math.PI*2);x.stroke()}let mv=Math.abs(p.vx)>.5,row=mv?1:0,fr=mv?Math.floor(performance.now()/90)%8:Math.floor(performance.now()/450)%6;q.forEach(a=>pet(img[a.id],a.x,a.y+70,row,fr,a.dir<0,.31));pet(img[sel],p.x,p.y+p.h,row,fr,p.dir<0,.38);x.font='22px sans-serif';parts.forEach(a=>x.fillText(a.ch,a.x-cam,a.y))}function loop(){update();draw();requestAnimationFrame(loop)}
-addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();k[e.key]=1;if(e.key===' '){e.preventDefault();jump()}if(e.key.toLowerCase()==='e')power();if(e.key.toLowerCase()==='x'||e.key.toLowerCase()==='k')attack();if(/[1-6]/.test(e.key))select(+e.key-1)});addEventListener('keyup',e=>k[e.key]=0);document.querySelectorAll('.party button').forEach((b,i)=>b.onclick=()=>select(i));[['left','ArrowLeft'],['right','ArrowRight']].forEach(([id,v])=>{let b=document.getElementById(id);b.onpointerdown=()=>k[v]=1;b.onpointerup=b.onpointercancel=b.onpointerleave=()=>k[v]=0});document.getElementById('jump').onclick=jump;document.getElementById('power').onclick=power;document.getElementById('attack').onclick=attack;document.getElementById('again').onclick=()=>reset(stage);document.getElementById('next').onclick=()=>reset(Math.min(3,stage+1));reset();loop()})();
+(() => {
+  const C = document.getElementById("game"),
+    x = C.getContext("2d"),
+    W = 960,
+    H = 540,
+    G = 430,
+    CW = 192,
+    CH = 208,
+    toast = document.getElementById("toast"),
+    finish = document.getElementById("finish"),
+    keyEl = document.getElementById("key"),
+    hpEl = document.getElementById("hp"),
+    names = ["Mura Bear", "Codex", "Dewey", "Hoots", "Seedy", "Ai"],
+    src = [
+      "mura-a-opt.webp",
+      "codex-opt.webp",
+      "dewey-opt.webp",
+      "hoots-opt.webp",
+      "seedy-opt.webp",
+      "ai-opt.webp",
+    ],
+    img = src.map((s) => {
+      let i = new Image();
+      i.src = "assets/" + s;
+      return i;
+    }),
+    factoryBg = new Image(),
+    forestBg = new Image(),
+    skyBg = new Image(),
+    guardianImg = new Image(),
+    enemyImg = [new Image(), new Image()],
+    forestEnemyImg = [new Image(), new Image()];
+  forestBg.src = "assets/forest-bg-v2-opt.webp";
+  forestEnemyImg[0].src = "assets/forest-golem-opt.webp";
+  forestEnemyImg[1].src = "assets/forest-wasp-opt.webp";
 
+  function loadStageAssets(targetStage) {
+    if (targetStage === 2 && !factoryBg.src) {
+      factoryBg.src = "assets/factory-bg-opt.webp";
+      enemyImg[0].src = "assets/factory-walker-opt.webp";
+      enemyImg[1].src = "assets/factory-drone-opt.webp";
+    }
+    if (targetStage === 3 && !skyBg.src) {
+      skyBg.src = "assets/sky-ruins-bg-opt.webp";
+      guardianImg.src = "assets/sky-guardian-opt.webp";
+    }
+  }
 
-
-
-
-
-
-
-
-
-
+  const firstStageImages = [forestBg, ...forestEnemyImg, ...img];
+  Promise.all(
+    firstStageImages.map((image) =>
+      image.decode ? image.decode().catch(() => {}) : Promise.resolve(),
+    ),
+  ).then(() => {
+    window.gameAssetsReady = true;
+    window.dispatchEvent(new Event("game-ready"));
+    setTimeout(() => loadStageAssets(2), 1200);
+  });
+  let stage = 1,
+    p,
+    q,
+    cam,
+    k,
+    sel,
+    stars,
+    key,
+    hp,
+    gate,
+    bridge,
+    vines,
+    keyTaken,
+    won,
+    parts,
+    coins,
+    flight,
+    mobs,
+    shots,
+    enemyShots,
+    attackCd,
+    invuln,
+    rootFx,
+    aiPowerCd;
+  const stageTitle = document.getElementById("stage-title"),
+    clearText = document.getElementById("clear-text"),
+    nextBtn = document.getElementById("next"),
+    mobCountEl = document.getElementById("mob-count");
+  function say(s) {
+    toast.textContent = s;
+    toast.style.opacity = 1;
+    clearTimeout(say.t);
+    say.t = setTimeout(() => (toast.style.opacity = 0.35), 2200);
+  }
+  function reset(toStage = stage) {
+    stage = toStage;
+    loadStageAssets(stage);
+    p = { x: 120, y: G - 78, vx: 0, vy: 0, w: 58, h: 72, on: 1, dir: 1 };
+    q = [1, 2, 3, 4, 5].map((id, i) => ({
+      id,
+      x: 70 - i * 40,
+      y: G - 66,
+      dir: 1,
+    }));
+    cam = 0;
+    k = {};
+    sel = 0;
+    stars = 0;
+    key = gate = bridge = vines = keyTaken = won = false;
+    flight = null;
+    hp = 5;
+    attackCd = invuln = aiPowerCd = 0;
+    rootFx = 0;
+    shots = [];
+    enemyShots = [];
+    mobs =
+      stage === 1
+        ? [
+            { type: "golem", x: 520, y: G - 54, home: 520, dir: 1, hp: 3 },
+            { type: "wasp", x: 920, y: G - 165, home: 920, dir: -1, hp: 2 },
+            { type: "golem", x: 1530, y: G - 54, home: 1530, dir: 1, hp: 3 },
+            { type: "wasp", x: 2050, y: G - 165, home: 2050, dir: -1, hp: 2 },
+            { type: "golem", x: 2660, y: G - 54, home: 2660, dir: -1, hp: 4 },
+          ]
+        : stage === 2
+          ? [
+              { type: "walker", x: 430, y: G - 48, home: 430, dir: 1, hp: 4 },
+              { type: "drone", x: 720, y: G - 165, home: 720, dir: -1, hp: 3 },
+              {
+                type: "walker",
+                x: 1040,
+                y: G - 48,
+                home: 1040,
+                dir: -1,
+                hp: 4,
+              },
+              { type: "drone", x: 1370, y: G - 180, home: 1370, dir: 1, hp: 3 },
+              { type: "walker", x: 1720, y: G - 48, home: 1720, dir: 1, hp: 5 },
+              {
+                type: "drone",
+                x: 2050,
+                y: G - 160,
+                home: 2050,
+                dir: -1,
+                hp: 3,
+              },
+              { type: "walker", x: 2390, y: G - 48, home: 2390, dir: 1, hp: 5 },
+              {
+                type: "drone",
+                x: 2700,
+                y: G - 175,
+                home: 2700,
+                dir: -1,
+                hp: 4,
+              },
+            ]
+          : [
+              { type: "golem", x: 430, y: G - 54, home: 430, dir: 1, hp: 5 },
+              { type: "wasp", x: 820, y: G - 170, home: 820, dir: -1, hp: 4 },
+              { type: "golem", x: 1250, y: G - 54, home: 1250, dir: -1, hp: 6 },
+              { type: "wasp", x: 1680, y: G - 185, home: 1680, dir: 1, hp: 5 },
+              { type: "golem", x: 2100, y: G - 54, home: 2100, dir: 1, hp: 7 },
+              { type: "wasp", x: 2450, y: G - 170, home: 2450, dir: -1, hp: 5 },
+              {
+                type: "boss",
+                x: 2830,
+                y: G - 105,
+                home: 2830,
+                dir: -1,
+                hp: 24,
+              },
+            ];
+    mobs.forEach((a) => {
+      a.max = a.hp;
+      a.minX = Math.max(45, a.home - 120);
+      a.maxX = Math.min(3055, a.home + 120);
+      a.cool = 50 + Math.random() * 70;
+    });
+    mobCountEl.textContent = mobs.length;
+    parts = [];
+    coins = [];
+    stageTitle.textContent =
+      stage === 1
+        ? "STAGE 1：はじまりの森"
+        : stage === 2
+          ? "STAGE 2：ネオン機械工場"
+          : "STAGE 3：天空遺跡の守護者";
+    nextBtn.style.display = stage < 3 ? "inline-block" : "none";
+    nextBtn.textContent = stage === 1 ? "ステージ2へ" : "ステージ3へ";
+    document.getElementById("key-hud").style.display =
+      stage === 1 ? "inline" : "none";
+    keyEl.textContent = 0;
+    hpEl.textContent = hp;
+    finish.classList.remove("show");
+    select(0);
+    say(
+      stage === 1
+        ? "Mura Bearと仲間たちの冒険が始まる！"
+        : stage === 2
+          ? "ネオン機械工場へ突入！全モブを倒して出口へ！"
+          : "天空遺跡へ！守護者を倒して最上階を目指そう！",
+    );
+  }
+  function select(i) {
+    if (flight) return;
+    sel = i;
+    let order = [0, 1, 2, 3, 4, 5].filter((id) => id !== i);
+    q.forEach((a, j) => (a.id = order[j]));
+    document
+      .querySelectorAll(".party button")
+      .forEach((b, j) => b.classList.toggle("active", i === j));
+    if (parts) burst(p.x, p.y + 20, "✨");
+    say(names[i] + "が先頭に交代！");
+  }
+  function burst(px, py, ch = "✨") {
+    for (let i = 0; i < 10; i++)
+      parts.push({
+        x: px,
+        y: py,
+        vx: (Math.random() - 0.5) * 7,
+        vy: -Math.random() * 7 - 2,
+        t: 55,
+        ch,
+      });
+  }
+  function power() {
+    if (sel === 1 && Math.abs(p.x - 720) < 150 && !gate) {
+      gate = true;
+      burst(720, G - 100, "⚡");
+      say("Codexが端末を解除！");
+    } else if (sel === 2 && p.x > 980 && p.x < 1480 && !bridge) {
+      bridge = true;
+      burst(1240, G - 20, "💧");
+      say("Deweyが水の橋を作った！");
+    } else if (sel === 4 && p.x > 1630 && p.x < 1950 && !vines) {
+      vines = true;
+      burst(1820, G - 70, "🌿");
+      say("Seedyがツタの足場を育てた！");
+    } else if (sel === 3 && p.x > 2050 && p.x < 2500 && !keyTaken && !flight) {
+      flight = { t: 0, sx: p.x, sy: p.y };
+      p.vx = p.vy = 0;
+      say("Hoots、空の鍵へテイクオフ！");
+    } else if (sel === 5 && aiPowerCd <= 0) {
+      aiPowerCd = 600;
+      if (hp < 5) {
+        hp++;
+        hpEl.textContent = hp;
+        burst(p.x, p.y, "💖");
+        say("Aiの応援でHPが1回復！");
+      } else {
+        invuln = Math.max(invuln, 180);
+        burst(p.x, p.y, "🛡️");
+        say("Aiの応援バリア！");
+      }
+    } else say("ここでは別の仲間の力が必要みたい…");
+  }
+  function jump() {
+    if (!flight && p.on) {
+      p.vy = -15;
+      p.on = 0;
+    }
+  }
+  function hitMob(a, d, kb = 0) {
+    if (a.dead) return;
+    a.hp -= d;
+    a.x = Math.max(a.minX, Math.min(a.maxX, a.x + kb));
+    if (a.x === a.minX) a.dir = 1;
+    if (a.x === a.maxX) a.dir = -1;
+    burst(a.x, a.y, "💥");
+    if (a.hp <= 0) {
+      a.dead = 1;
+      mobCountEl.textContent = mobs.filter((m) => !m.dead).length;
+      burst(a.x, a.y, "✨");
+      say(
+        a.type === "drone" || a.type === "wasp"
+          ? "飛行モブを撃破！"
+          : "地上モブを撃破！",
+      );
+    }
+  }
+  function attack() {
+    if (flight || attackCd > 0) return;
+    attackCd = 24;
+    if (sel === 0) {
+      let hit = 0;
+      mobs.forEach((a) => {
+        if (!a.dead && Math.hypot(p.x - a.x, p.y + 35 - a.y) < 115) {
+          hitMob(a, 2, p.dir * 35);
+          hit = 1;
+        }
+      });
+      burst(p.x + p.dir * 55, p.y + 35, "👊");
+      if (!hit) say("Muraパンチ！");
+    } else if (sel === 4) {
+      rootFx = 30;
+      let hit = 0;
+      mobs.forEach((a) => {
+        if (!a.dead && Math.abs(p.x - a.x) < 180) {
+          hitMob(a, 1, 0);
+          a.root = 90;
+          hit = 1;
+        }
+      });
+      say(hit ? "Seedyのツタが敵を捕まえた！" : "Seedyのツタ攻撃！");
+    } else {
+      let glyph = sel === 1 ? "▸" : sel === 2 ? "●" : sel === 5 ? "♥" : "➤",
+        speed = sel === 2 ? 7 : sel === 5 ? 8 : 10,
+        damage = sel === 1 ? 2 : sel === 5 ? 2 : 1,
+        sx = p.x + p.dir * 45,
+        sy = p.y + 28,
+        target = mobs
+          .filter(
+            (a) =>
+              !a.dead && (a.x - p.x) * p.dir > 0 && Math.abs(a.x - p.x) < 700,
+          )
+          .sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0],
+        vx = p.dir * speed,
+        vy = 0;
+      if (target) {
+        let frames = Math.max(10, Math.abs(target.x - sx) / speed);
+        vy = Math.max(-6, Math.min(6, (target.y - sy) / frames));
+      }
+      shots.push({ x: sx, y: sy, vx, vy, glyph, kind: sel, damage });
+      say(
+        sel === 1
+          ? "Codexショット！"
+          : sel === 2
+            ? "Deweyの水弾！"
+            : sel === 5
+              ? "Aiの応援ハート！"
+              : "Hootsの羽根攻撃！",
+      );
+    }
+  }
+  function update() {
+    if (won) return;
+    if (attackCd > 0) attackCd--;
+    if (aiPowerCd > 0) aiPowerCd--;
+    if (invuln > 0) invuln--;
+    if (rootFx > 0) rootFx--;
+    if (flight) {
+      flight.t++;
+      let u = Math.min(1, flight.t / 120),
+        arc = Math.sin(Math.PI * u);
+      p.x = flight.sx + (2290 - flight.sx) * arc;
+      p.y = flight.sy - 225 * arc;
+      p.dir = 1;
+      q.forEach((a, i) => {
+        let tx = flight.sx - (i + 1) * 48,
+          ty = flight.sy + 10;
+        a.x += (tx - a.x) * 0.09;
+        a.y += (ty - a.y) * 0.12;
+      });
+      if (flight.t === 60) {
+        keyTaken = key = true;
+        keyEl.textContent = 1;
+        burst(2290, G - 260, "🔑");
+        say("Hootsが空の鍵をキャッチ！");
+      }
+      if (flight.t >= 120) {
+        p.x = flight.sx;
+        p.y = flight.sy;
+        p.on = 1;
+        flight = null;
+        say("Hootsが鍵を持って帰還！");
+      }
+      cam += (Math.max(0, Math.min(2240, p.x - W * 0.38)) - cam) * 0.08;
+      parts.forEach((a) => {
+        a.x += a.vx;
+        a.y += a.vy;
+        a.vy += 0.15;
+        a.t--;
+      });
+      parts = parts.filter((a) => a.t > 0);
+      return;
+    }
+    let m = (k.ArrowRight || k.d ? 1 : 0) - (k.ArrowLeft || k.a ? 1 : 0);
+    p.vx += (m * 1.15 - p.vx) * 0.22;
+    if (m) p.dir = m;
+    p.vy += 0.78;
+    let nx = p.x + p.vx,
+      ny = p.y + p.vy;
+    if (stage === 1 && !gate && nx > 685 && nx < 765 && p.y > G - 155) {
+      nx = p.x < 725 ? 684 : 766;
+      p.vx = 0;
+    }
+    if (stage === 1 && nx > 1105 && nx < 1385 && !bridge && p.y > G - 100)
+      ny = H + 100;
+    if (ny + p.h >= G && !(stage === 1 && nx > 1100 && nx < 1390 && !bridge)) {
+      ny = G - p.h;
+      p.vy = 0;
+      p.on = 1;
+    }
+    if (
+      stage === 1 &&
+      vines &&
+      nx > 1770 &&
+      nx < 1900 &&
+      ny + p.h > G - 92 &&
+      p.y + p.h <= G - 80
+    ) {
+      ny = G - 92 - p.h;
+      p.vy = 0;
+      p.on = 1;
+    }
+    if (
+      stage === 1 &&
+      nx > 2160 &&
+      nx < 2400 &&
+      ny + p.h > G - 190 &&
+      p.y + p.h <= G - 160
+    ) {
+      ny = G - 190 - p.h;
+      p.vy = 0;
+      p.on = 1;
+    }
+    p.x = Math.max(30, Math.min(3150, nx));
+    p.y = ny;
+    if (p.y > H) {
+      say("水に落ちた！Deweyの力を借りよう");
+      p.x = 980;
+      p.y = G - p.h;
+      p.vy = 0;
+    }
+    q.forEach((a, i) => {
+      let tx = p.x - (i + 1) * 48 * p.dir,
+        ty = p.y + 10,
+        dx = tx - a.x;
+      if (Math.abs(dx) > 0.5) a.dir = dx < 0 ? -1 : 1;
+      a.x += dx * 0.09;
+      a.y += (ty - a.y) * 0.12;
+    });
+    shots.forEach((s) => {
+      s.x += s.vx;
+      s.y += s.vy || 0;
+      mobs.forEach((a) => {
+        if (!a.dead && !s.dead && Math.hypot(s.x - a.x, s.y - a.y) < 55) {
+          hitMob(a, s.damage, s.vx * 2);
+          if (s.kind === 2)
+            a.x = Math.max(a.minX, Math.min(a.maxX, a.x + s.vx * 3));
+          s.dead = 1;
+        }
+      });
+    });
+    shots = shots.filter((s) => !s.dead && Math.abs(s.x - p.x) < 900);
+    enemyShots.forEach((s) => {
+      s.x += s.vx;
+      s.y += s.vy;
+      if (!s.dead && Math.hypot(s.x - p.x, s.y - (p.y + 35)) < 38) {
+        s.dead = 1;
+        if (invuln === 0) {
+          hp--;
+          hpEl.textContent = hp;
+          invuln = 90;
+          p.vx = s.vx < 0 ? -7 : 7;
+          p.vy = -6;
+          burst(p.x, p.y, "💔");
+          say("敵の弾にヒット！");
+          if (hp <= 0) {
+            hp = 5;
+            hpEl.textContent = hp;
+            p.x = Math.max(120, p.x - 350);
+            p.y = G - p.h;
+            say("仲間たちが助けてくれた！");
+          }
+        }
+      }
+    });
+    enemyShots = enemyShots.filter(
+      (s) => !s.dead && Math.abs(s.x - p.x) < 900 && s.y > -40 && s.y < H + 40,
+    );
+    mobs.forEach((a) => {
+      if (a.dead) return;
+      let pd = p.x - a.x,
+        alert = stage >= 2 && Math.abs(pd) < 420;
+      if (a.root > 0) a.root--;
+      else {
+        if (
+          alert &&
+          (a.type === "walker" || a.type === "golem" || a.type === "boss")
+        ) {
+          a.dir = pd < 0 ? -1 : 1;
+          a.x += a.dir * (a.type === "boss" ? 1.25 : 2.35);
+        } else
+          a.x +=
+            a.dir * (a.type === "drone" || a.type === "wasp" ? 0.75 : 0.55);
+        if (a.x <= a.minX) {
+          a.x = a.minX;
+          a.dir = 1;
+        } else if (a.x >= a.maxX) {
+          a.x = a.maxX;
+          a.dir = -1;
+        }
+      }
+      if (a.type === "drone" || a.type === "wasp")
+        a.y = G - 155 + Math.sin(performance.now() / 420 + a.home) * 32;
+      if (
+        (stage === 2 && a.type === "drone") ||
+        (stage === 3 && (a.type === "wasp" || a.type === "boss"))
+      ) {
+        a.cool--;
+        if (Math.abs(pd) < 560 && a.cool <= 0) {
+          let d = Math.hypot(p.x - a.x, p.y + 30 - a.y) || 1;
+          enemyShots.push({
+            x: a.x,
+            y: a.y,
+            vx: ((p.x - a.x) / d) * 4.4,
+            vy: ((p.y + 30 - a.y) / d) * 4.4,
+          });
+          a.cool = a.type === "boss" ? 65 : 115;
+          burst(a.x, a.y, "⚠️");
+        }
+      }
+      if (Math.hypot(p.x - a.x, p.y + 35 - a.y) < 52 && invuln === 0) {
+        hp--;
+        hpEl.textContent = hp;
+        invuln = 90;
+        p.vx = -a.dir * 7;
+        p.vy = -6;
+        burst(p.x, p.y, "💔");
+        say("ダメージ！");
+        if (hp <= 0) {
+          hp = 5;
+          hpEl.textContent = hp;
+          p.x = Math.max(120, p.x - 350);
+          p.y = G - p.h;
+          say("仲間たちが助けてくれた！");
+        }
+      }
+    });
+    if (p.x > 2940) {
+      if (stage >= 2) {
+        if (mobs.every((a) => a.dead)) {
+          won = true;
+          clearText.textContent =
+            stage === 2
+              ? "機械工場のモブを全滅させました！"
+              : "天空の守護者を倒し、遺跡を解放しました！";
+          burst(p.x, p.y, "🎉");
+          setTimeout(() => finish.classList.add("show"), 500);
+        } else {
+          let remaining = mobs.filter((a) => !a.dead),
+            rescue = remaining[0];
+          rescue.home = 2820;
+          rescue.minX = 2700;
+          rescue.maxX = 2940;
+          rescue.x = 2820;
+          rescue.y =
+            rescue.type === "drone" || rescue.type === "wasp"
+              ? G - 145
+              : rescue.type === "boss"
+                ? G - 105
+                : G - 48;
+          p.x = 2880;
+          say(
+            "残り" +
+              remaining.length +
+              "体！最後のモブを出口付近へ呼び戻した！",
+          );
+        }
+      } else if (key) {
+        won = true;
+        clearText.textContent = "6人の力で、はじまりの森を突破しました。";
+        burst(p.x, p.y, "🎉");
+        setTimeout(() => finish.classList.add("show"), 500);
+      } else {
+        p.x = 2900;
+        say("出口には空の鍵が必要！Hootsを呼ぼう");
+      }
+    }
+    cam += (Math.max(0, Math.min(2240, p.x - W * 0.38)) - cam) * 0.08;
+    parts.forEach((a) => {
+      a.x += a.vx;
+      a.y += a.vy;
+      a.vy += 0.15;
+      a.t--;
+    });
+    parts = parts.filter((a) => a.t > 0);
+  }
+  function pet(im, px, py, row, fr, flip = false, s = 0.38) {
+    x.save();
+    x.translate(px - cam, py);
+    if (flip) x.scale(-1, 1);
+    x.drawImage(
+      im,
+      fr * CW,
+      row * CH,
+      CW,
+      CH,
+      (-CW * s) / 2,
+      -CH * s,
+      CW * s,
+      CH * s,
+    );
+    x.restore();
+  }
+  function draw() {
+    let g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#73c9ef");
+    g.addColorStop(0.55, "#bcebd4");
+    g.addColorStop(1, "#3d8a4d");
+    x.fillStyle = g;
+    x.fillRect(0, 0, W, H);
+    if (stage === 3) {
+      if (skyBg.complete) {
+        let bgx = -((cam * 0.12) % W);
+        x.drawImage(skyBg, bgx - W, 0, W, H);
+        x.drawImage(skyBg, bgx, 0, W, H);
+        x.drawImage(skyBg, bgx + W, 0, W, H);
+      }
+      x.fillStyle = "#3e315055";
+      x.fillRect(0, 0, W, H);
+      x.fillStyle = "#d9cfb7";
+      x.fillRect(0, G, W, H - G);
+      x.fillStyle = "#fff3c9";
+      x.fillRect(0, G, W, 10);
+      x.strokeStyle = "#5adcf2";
+      x.lineWidth = 4;
+      for (let a = (-cam % 180) - 180; a < W + 180; a += 180) {
+        x.beginPath();
+        x.moveTo(a, G + 38);
+        x.lineTo(a + 70, G + 38);
+        x.lineTo(a + 90, G + 58);
+        x.lineTo(a + 110, G + 38);
+        x.lineTo(a + 180, G + 38);
+        x.stroke();
+      }
+      x.fillStyle = "#326c86";
+      x.font = "bold 20px sans-serif";
+      x.fillText("天空遺跡・最上階 →", 36, G - 22);
+    } else if (stage === 2) {
+      if (factoryBg.complete) {
+        let bgx = -((cam * 0.22) % W);
+        x.drawImage(factoryBg, bgx - W, 0, W, H);
+        x.drawImage(factoryBg, bgx, 0, W, H);
+        x.drawImage(factoryBg, bgx + W, 0, W, H);
+      }
+      x.fillStyle = "#071b2aaa";
+      x.fillRect(0, G, W, H - G);
+      x.strokeStyle = "#35d5ff88";
+      x.lineWidth = 4;
+      for (let a = (-cam % 160) - 160; a < W + 160; a += 160) {
+        x.beginPath();
+        x.moveTo(a, G);
+        x.lineTo(a - 55, H);
+        x.stroke();
+      }
+      x.strokeStyle = "#ff4fd866";
+      x.lineWidth = 3;
+      x.beginPath();
+      x.moveTo(0, G + 34);
+      x.lineTo(W, G + 34);
+      x.stroke();
+    } else {
+      if (forestBg.complete) {
+        let crop = (forestBg.width - (forestBg.height * W) / H) / 2;
+        x.drawImage(
+          forestBg,
+          Math.max(0, crop),
+          0,
+          forestBg.width - Math.max(0, crop) * 2,
+          forestBg.height,
+          0,
+          0,
+          W,
+          H,
+        );
+      }
+      x.fillStyle = "#112f2070";
+      x.fillRect(0, 0, W, H);
+      x.fillStyle = "#342719";
+      x.fillRect(0, G, W, H - G);
+      x.fillStyle = "#92d95d";
+      x.fillRect(0, G, W, 14);
+      x.fillStyle = "#e5f4a4";
+      x.fillRect(0, G, W, 4);
+      for (let a = (-cam % 100) - 100; a < W + 100; a += 100) {
+        x.fillStyle = "#60442d";
+        x.beginPath();
+        x.ellipse(a, G + 52, 37, 14, 0, 0, 7);
+        x.fill();
+      }
+      const sign = (wx, label, color) => {
+        let sx = wx - cam;
+        x.fillStyle = "#33271d";
+        x.fillRect(sx - 5, G - 94, 10, 94);
+        x.fillStyle = color;
+        x.fillRect(sx - 76, G - 138, 152, 48);
+        x.strokeStyle = "#fff1c9";
+        x.lineWidth = 3;
+        x.strokeRect(sx - 76, G - 138, 152, 48);
+        x.fillStyle = "#fff";
+        x.font = "bold 18px sans-serif";
+        x.textAlign = "center";
+        x.fillText(label, sx, G - 107);
+        x.textAlign = "start";
+      };
+      sign(330, "ATTACKで倒せ！", "#a8443c");
+      sign(1010, "DEWEY の力", "#177da7");
+      sign(1715, "SEEDY の力", "#378b43");
+      sign(2070, "HOOTS で飛ぶ", "#674691");
+      x.fillStyle = "#254b63";
+      x.fillRect(700 - cam, G - 160, 52, 20);
+      x.fillRect(700 - cam, G - 20, 52, 20);
+      if (!gate) {
+        let barrier = x.createLinearGradient(700 - cam, 0, 752 - cam, 0);
+        barrier.addColorStop(0, "#ff4b7044");
+        barrier.addColorStop(0.5, "#ff8caadd");
+        barrier.addColorStop(1, "#ff4b7044");
+        x.fillStyle = barrier;
+        x.fillRect(706 - cam, G - 140, 40, 120);
+        x.strokeStyle = "#ffd1dc";
+        x.lineWidth = 3;
+        for (let gy = G - 128; gy < G - 28; gy += 18) {
+          x.beginPath();
+          x.moveTo(709 - cam, gy);
+          x.lineTo(743 - cam, gy + 8);
+          x.stroke();
+        }
+      } else {
+        x.fillStyle = "#72d9a1";
+        x.fillRect(706 - cam, G - 154, 40, 8);
+        x.fillRect(706 - cam, G - 14, 40, 8);
+        x.font = "16px sans-serif";
+        x.fillText("OPEN", 703 - cam, G - 168);
+      }
+      x.fillStyle = "#176d9d";
+      x.fillRect(1100 - cam, G, 290, 110);
+      x.fillStyle = "#81e6ff";
+      x.fillRect(1100 - cam, G, 290, 8);
+      x.fillStyle = "#e8fbff";
+      for (let a = 1110; a < 1390; a += 36) {
+        x.fillRect(a - cam, G + 14, 20, 3);
+      }
+      if (bridge) {
+        x.fillStyle = "#a4eafa";
+        x.fillRect(1100 - cam, G - 15, 290, 20);
+      }
+      if (vines) {
+        x.fillStyle = "#4caf54";
+        for (let a = 1780; a < 1900; a += 35)
+          x.fillRect(a - cam, G - 92, 28, 92);
+      }
+      x.fillStyle = "#74513f";
+      x.fillRect(2160 - cam, G - 190, 240, 28);
+      x.fillStyle = "#55a84d";
+      x.fillRect(2160 - cam, G - 190, 240, 9);
+      if (!keyTaken) {
+        x.font = "34px sans-serif";
+        x.fillText("🔑", 2270 - cam, G - 225);
+      }
+      x.fillStyle = "#684d8b";
+      x.fillRect(2960 - cam, G - 180, 90, 180);
+      x.fillStyle = key ? "#7dffc1" : "#ff7990";
+      x.fillRect(2980 - cam, G - 135, 48, 100);
+    }
+    mobs.forEach((a) => {
+      if (a.dead) return;
+      x.save();
+      x.translate(a.x - cam, a.y);
+      if (stage === 2 && a.type === "drone" && a.cool < 25) {
+        x.strokeStyle = "#ff5d76";
+        x.lineWidth = 5;
+        x.beginPath();
+        x.arc(0, 0, 36 + (25 - a.cool) * 0.5, 0, 7);
+        x.stroke();
+      }
+      if (stage === 2) {
+        let ei = enemyImg[a.type === "drone" ? 1 : 0],
+          size = a.type === "drone" ? 96 : 102;
+        if (ei.complete) x.drawImage(ei, -size / 2, -size / 2, size, size);
+      } else if (stage === 3) {
+        if (a.type === "boss") {
+          if (guardianImg.complete)
+            x.drawImage(guardianImg, -92, -92, 184, 184);
+        } else {
+          let flying = a.type === "wasp",
+            ei = forestEnemyImg[flying ? 1 : 0],
+            size = flying ? 108 : 120;
+          if (ei.complete) x.drawImage(ei, -size / 2, -size / 2, size, size);
+        }
+      } else {
+        let flying = a.type === "wasp",
+          ei = forestEnemyImg[flying ? 1 : 0],
+          size = flying ? 112 : 126;
+        if (a.root > 0) {
+          x.shadowColor = "#71ff76";
+          x.shadowBlur = 22;
+        }
+        if (ei.complete) x.drawImage(ei, -size / 2, -size / 2, size, size);
+        x.shadowBlur = 0;
+      }
+      x.fillStyle = "#2a1720";
+      x.fillRect(-24, -58, 48, 5);
+      x.fillStyle = "#72ef8d";
+      x.fillRect(-24, -58, (48 * Math.max(0, a.hp)) / a.max, 5);
+      x.restore();
+    });
+    shots.forEach((s) => {
+      x.fillStyle =
+        s.kind === 1 ? "#7ce7ff" : s.kind === 2 ? "#53bfff" : "#ffe889";
+      x.font = "26px sans-serif";
+      x.fillText(s.glyph, s.x - cam, s.y);
+    });
+    enemyShots.forEach((s) => {
+      x.fillStyle = "#ff486a";
+      x.shadowColor = "#ff9bad";
+      x.shadowBlur = 14;
+      x.beginPath();
+      x.arc(s.x - cam, s.y, 9, 0, 7);
+      x.fill();
+      x.shadowBlur = 0;
+    });
+    if (rootFx > 0) {
+      x.strokeStyle = "#58c95c";
+      x.lineWidth = 7;
+      x.beginPath();
+      x.arc(p.x - cam, G - 12, 150, Math.PI, Math.PI * 2);
+      x.stroke();
+    }
+    let mv = Math.abs(p.vx) > 0.5,
+      row = mv ? 1 : 0,
+      fr = mv
+        ? Math.floor(performance.now() / 90) % 8
+        : Math.floor(performance.now() / 450) % 6;
+    q.forEach((a) => pet(img[a.id], a.x, a.y + 70, row, fr, a.dir < 0, 0.31));
+    pet(img[sel], p.x, p.y + p.h, row, fr, p.dir < 0, 0.38);
+    x.font = "22px sans-serif";
+    parts.forEach((a) => x.fillText(a.ch, a.x - cam, a.y));
+  }
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  addEventListener("keydown", (e) => {
+    if (["ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
+    k[e.key] = 1;
+    if (e.key === " ") {
+      e.preventDefault();
+      jump();
+    }
+    if (e.key.toLowerCase() === "e") power();
+    if (e.key.toLowerCase() === "x" || e.key.toLowerCase() === "k") attack();
+    if (/[1-6]/.test(e.key)) select(+e.key - 1);
+  });
+  addEventListener("keyup", (e) => (k[e.key] = 0));
+  document
+    .querySelectorAll(".party button")
+    .forEach((b, i) => (b.onclick = () => select(i)));
+  [
+    ["left", "ArrowLeft"],
+    ["right", "ArrowRight"],
+  ].forEach(([id, v]) => {
+    let b = document.getElementById(id);
+    b.onpointerdown = () => (k[v] = 1);
+    b.onpointerup = b.onpointercancel = b.onpointerleave = () => (k[v] = 0);
+  });
+  document.getElementById("jump").onclick = jump;
+  document.getElementById("power").onclick = power;
+  document.getElementById("attack").onclick = attack;
+  document.getElementById("again").onclick = () => reset(stage);
+  document.getElementById("next").onclick = () => reset(Math.min(3, stage + 1));
+  reset();
+  loop();
+})();
